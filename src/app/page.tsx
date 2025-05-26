@@ -13,7 +13,14 @@ export default function Home() {
               <li>No markdown files found in blog/</li>
             ) : (
               mdFiles.map((file) => (
-                <li key={file}>{file}</li>
+                <li key={file}>
+                  <a
+                    href={`/blog/${file.replace(/\.md$/, "")}`}
+                    className="text-blue-600 hover:underline"
+                  >
+                    {file}
+                  </a>
+                </li>
               ))
             )}
           </ul>
