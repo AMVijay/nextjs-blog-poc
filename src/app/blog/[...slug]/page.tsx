@@ -14,15 +14,26 @@ interface FrontMatter {
 const postsDirectory = path.join(process.cwd(), "blog");
 
 export async function generateStaticParams() {
-  const files = fs.readdirSync(postsDirectory);
-  return files
-    .filter((file) => file.endsWith(".md"))
-    .map((file) => ({ slug: file.replace(/\.md$/, "") }));
+  function walk(dir: string, parent: string[] = []): { slug: string[] }[] {
+    let params: { slug: string[] }[] = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        params = params.concat(walk(path.join(dir, entry.name), [...parent, entry.name]));
+      } else if (entry.isFile() && entry.name.endsWith('.md')) {
+        const slugArr = [...parent, entry.name.replace(/\.md$/, "")];
+        params.push({ slug: slugArr });
+      }
+    }
+    return params;
+  }
+  return walk(postsDirectory);
 }
 
-export default async function BlogPage({ params, }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const filePath = path.join(postsDirectory, `${slug}.md`);
+export default async function BlogPage({ params }: { params: Promise<{ slug: string[] }> }) {
+  const slugArr = (await params).slug;
+  const relPath = Array.isArray(slugArr) ? slugArr.join("/") : slugArr;
+  const filePath = path.join(postsDirectory, `${relPath}.md`);
   if (!fs.existsSync(filePath)) {
     notFound();
   }
@@ -30,7 +41,6 @@ export default async function BlogPage({ params, }: { params: Promise<{ slug: st
 
   const { data, content } = matter(fileContents);
   const frontMatter = data as FrontMatter;
-
   const htmlContent = marked(content);
 
   return (
